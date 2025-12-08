@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WeApRous P2P Chat</title>
+    <style>
+        /* RESET & LAYOUT */
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            margin: 0; padding: 0; 
+            height: 100vh; 
+            display: flex; flex-direction: column; 
+        }
+        
+        /* HEADER */
+        .header { 
+            background: #fff; padding: 15px 30px; 
+            border-bottom: 1px solid #e0e0e0; 
+            display: flex; justify-content: space-between; align-items: center; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            height: 60px;
+        }
+        .header h2 { margin: 0; color: #333; font-size: 1.2rem; }
+        .logout-btn { 
+            background: #dc3545; color: white; border: none; 
+            padding: 8px 15px; border-radius: 5px; 
+            cursor: pointer; font-size: 0.9rem; 
+        }
+
+        /* MAIN CONTAINER */
+        .main-container { 
+            flex: 1; display: flex; 
+            overflow: hidden; 
+            padding: 20px; gap: 20px; 
+            max-width: 1400px; margin: 0 auto; width: 100%; 
+        }
+
+        /* SIDEBAR */
+        .sidebar { 
+            width: 320px; background: #fff; 
+            border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            display: flex; flex-direction: column; overflow: hidden; 
+        }
+        .sidebar-header { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #eee; }
+        
+        /* ROOM ITEM (Broadcast) */
+        .room-item { 
+            padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; 
+            background: #e8f5e9; color: #2e7d32; font-weight: bold; 
+            display: flex; align-items: center; gap: 10px;
+        }
+        .room-item:hover { background: #c8e6c9; }
+        .room-item.active { background: #4caf50; color: white; }
+
+        /* PEER LIST */
+        .peer-list { flex: 1; overflow-y: auto; }
+        .peer-item { 
+            padding: 12px 15px; border-bottom: 1px solid #f1f1f1; 
+            display: flex; justify-content: space-between; align-items: center; 
+        }
+        .peer-item:hover { background: #f9f9f9; }
+        .peer-item.active { background: #e3f2fd; border-left: 4px solid #007bff; }
+        
+        .action-btn { 
+            font-size: 0.75rem; padding: 5px 10px; border: none; 
+            border-radius: 4px; cursor: pointer; margin-left: 5px; 
+        }
+        .btn-connect { background: #17a2b8; color: white; }
+        .btn-chat { background: #007bff; color: white; }
+
+        /* CHAT AREA */
+        .chat-area { 
+            flex: 1; background: #fff; 
+            border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            display: flex; flex-direction: column; overflow: hidden; 
+        }
+        .chat-header { 
+            padding: 15px; border-bottom: 1px solid #eee; background: #f8f9fa; 
+            height: 60px; display: flex; flex-direction: column; justify-content: center;
+        }
+        
+        .messages { 
+            flex: 1; padding: 20px; overflow-y: auto; 
+            background-color: #fff; display: flex; flex-direction: column; gap: 10px; 
+        }
+        
+        /* BONG BÓNG CHAT */
+        .message-row { display: flex; width: 100%; }
+        .msg-content { 
+            padding: 10px 15px; border-radius: 15px; 
+            max-width: 70%; word-wrap: break-word; font-size: 0.95rem; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+        }
+        .sent { justify-content: flex-end; }
+        .sent .msg-content { background-color: #007bff; color: white; border-bottom-right-radius: 2px; }
+        .received { justify-content: flex-start; }
+        .received .msg-content { background-color: #f1f0f0; color: #333; border-bottom-left-radius: 2px; }
+        .msg-sender { font-size: 0.75rem; font-weight: bold; margin-bottom: 3px; display: block; }
+        .sent .msg-sender { color: #e0e0e0; text-align: right; }
+        .received .msg-sender { color: #666; }
+
+        /* INPUT AREA */
+        .input-area { padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; background: #fff; }
+        .input-area input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; }
+        .send-btn { background: #007bff; color: white; border: none; padding: 0 25px; border-radius: 25px; font-weight: bold; cursor: pointer; }
+        .send-btn:disabled { background: #ccc; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            <h2>WeApRous Chat</h2>
+            <span style="margin: 0 15px; color: #ddd;">|</span>
+            <span>Hi, <span id="username" style="font-weight:bold; color:#007bff;">Guest</span></span>
+            <span id="engine_status" style="margin-left:15px; font-size: 0.8rem; color:red;">● Engine Offline</span>
+        </div>
+        <form action="/logout" method="POST" style="margin:0;">
+            <button class="logout-btn">Log Out</button>
+        </form>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="sidebar">
+            <div id="btn_global" class="room-item active" onclick="switchToGlobal()">
+                <span>📢</span> Global Broadcast
+            </div>
+
+            <div class="peer-list">
+                <div style="padding: 10px; font-weight: bold; font-size: 0.85rem; color: #666; background:#f9f9f9;">ONLINE PEERS</div>
+                <ul id="peer_ul" style="list-style: none; padding: 0; margin: 0;"></ul>
+            </div>
+
+            <div id="incoming_requests" class="request-box" style="display:none;">
+                <strong style="color:#d9534f;">🔔 New Requests:</strong>
+                <div id="req_list"></div>
+            </div>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-header">
+                <h3 id="chat_title" style="margin:0;">📢 Global Broadcast</h3>
+                <small id="chat_subtitle">Messages here are sent to EVERYONE connected.</small>
+            </div>
+
+            <div class="messages" id="message_area">
+                <div style="text-align:center; color:#999; margin-top:20px;">Welcome! Select a room or peer to chat.</div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="chat_input" placeholder="Type a message..." disabled>
+                <button id="btn_send" class="send-btn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let ENGINE_API = "";
+    let isEngineReady = false;
+    let chatMode = 'broadcast'; 
+    let currentPeer = null; 
+
+    // --- INIT ---
+    function getUsername() {
+        let matches = document.cookie.match(/auth=([^;]+)/);
+        let user = matches ? decodeURIComponent(matches[1]) : 'Guest';
+        document.getElementById('username').innerText = user;
+        return user;
+    }
+    let myUsername = getUsername();
+
+    // --- SWITCH MODES ---
+    function switchToGlobal() {
+        chatMode = 'broadcast';
+        currentPeer = null;
+        
+        // Update UI
+        document.getElementById('chat_title').innerText = "📢 Global Broadcast";
+        document.getElementById('chat_subtitle').innerText = "Sending to ALL connected peers.";
+        document.getElementById('btn_send').style.background = "#28a745"; 
+        document.getElementById('btn_send').innerText = "Broadcast";
+
+        document.getElementById('btn_global').classList.add('active');
+        document.querySelectorAll('.peer-item').forEach(el => el.classList.remove('active'));
+    }
+
+    function switchToPrivate(ip, port, name) {
+        chatMode = 'private';
+        currentPeer = {ip: ip, port: port, name: name};
+
+        document.getElementById('chat_title').innerText = `💬 Chat with ${name}`;
+        document.getElementById('chat_subtitle').innerText = `Direct P2P connection to ${ip}:${port}`;
+        document.getElementById('btn_send').style.background = "#007bff";
+        document.getElementById('btn_send').innerText = "Send";
+
+        document.getElementById('btn_global').classList.remove('active');
+        // Highlight active peer
+        document.querySelectorAll('.peer-item').forEach(el => el.classList.remove('active'));
+        let item = document.getElementById(`peer-${name}`);
+        if(item) item.classList.add('active');
+    }
+
+    // --- CONNECT ENGINE ---
+    async function autoConnectEngine() {
+        try {
+            let res = await fetch('/get-my-info');
+            if (res.ok) {
+                let data = await res.json();
+                ENGINE_API = data.engine_url;
+                
+                let ping = await fetch(ENGINE_API + '/api/messages');
+                if (ping.ok) {
+                    document.getElementById('engine_status').innerText = "● Engine Online";
+                    document.getElementById('engine_status').style.color = "green";
+                    isEngineReady = true;
+                    document.getElementById('chat_input').disabled = false;
+                    document.getElementById('btn_send').disabled = false;
+                    startPolling();
+                } else throw new Error();
+            } else throw new Error();
+        } catch (e) {
+            document.getElementById('engine_status').innerText = "● Engine Offline";
+            document.getElementById('engine_status').style.color = "red";
+            setTimeout(autoConnectEngine, 3000);
+        }
+    }
+
+    // --- GET PEERS ---
+    async function fetchPeers() {
+        try {
+            let res = await fetch('/get-list');
+            let peers = await res.json();
+            let html = '';
+
+            for (let [user, info] of Object.entries(peers)) {
+                if (user !== myUsername) {
+                    // Check logic nút bấm: Nếu đã connect thì hiện nút Chat, chưa thì hiện Connect
+                    html += `
+                    <div class="peer-item" id="peer-${user}">
+                        <div>
+                            <b>${user}</b> <small style="color:#888;">(${info.ip}:${info.port})</small>
+                        </div>
+                        <div>
+                            <button class="action-btn btn-connect" onclick="connectToPeer('${info.ip}', ${info.port}, '${user}')">Connect</button>
+                            <button class="action-btn btn-chat" onclick="switchToPrivate('${info.ip}', ${info.port}, '${user}')">Chat</button>
+                        </div>
+                    </div>`;
+                }
+            }
+            document.getElementById('peer_ul').innerHTML = html;
+        } catch (e) {}
+    }
+
+    // --- ACTIONS ---
+    async function sendMessage() {
+        if (!isEngineReady) return;
+        let input = document.getElementById('chat_input');
+        let msg = input.value;
+        if (!msg) return;
+
+        try {
+            if (chatMode === 'broadcast') {
+                await fetch(ENGINE_API + '/broadcast-peer', {
+                    method: 'POST',
+                    body: JSON.stringify({ msg: msg })
+                });
+            } else {
+                await fetch(ENGINE_API + '/api/send', {
+                    method: 'POST',
+                    body: JSON.stringify({ msg: msg, ip: currentPeer.ip, port: currentPeer.port })
+                });
+            }
+            input.value = '';
+            loadMessages();
+        } catch (e) { alert("Send failed: " + e); }
+    }
+
+    async function connectToPeer(ip, port, name) {
+        try {
+            await fetch(ENGINE_API + '/api/connect', {
+                method: 'POST',
+                body: JSON.stringify({ ip: ip, port: port, my_name: myUsername })
+            });
+            alert(`Sent connection request to ${name}`);
+        } catch (e) { alert("Error: " + e); }
+    }
+
+    // --- POLLING ---
+    async function loadMessages() {
+        if (!isEngineReady) return;
+        try {
+            let res = await fetch(ENGINE_API + '/api/messages');
+            let msgs = await res.json();
+            let html = '';
+            
+            for (let m of msgs) {
+                // Filter logic: 
+                // Nếu ở chế độ broadcast -> Hiện tin của mọi người (hoặc lọc logic tùy ý)
+                // Nếu ở chế độ private -> Chỉ hiện tin của người đó
+                
+                // Ở bài tập này ta hiển thị hết (đơn giản hóa)
+                // Nhưng đánh dấu người gửi
+                
+                let cls = (m.type === 'sent') ? 'sent' : 'received';
+                html += `
+                <div class="message-row ${cls}">
+                    <div class="msg-content">
+                        <span class="msg-sender">${m.sender}</span>
+                        ${m.msg}
+                    </div>
+                </div>`;
+            }
+            
+            let area = document.getElementById('message_area');
+            let shouldScroll = area.scrollTop + area.clientHeight >= area.scrollHeight - 50;
+            area.innerHTML = html;
+            if(shouldScroll) area.scrollTop = area.scrollHeight;
+        } catch (e) {}
+    }
+
+    async function checkRequests() {
+        if (!isEngineReady) return;
+        try {
+            let res = await fetch(ENGINE_API + '/api/pending');
+            let reqs = await res.json();
+            let div = document.getElementById('incoming_requests');
+            let list = document.getElementById('req_list');
+
+            if (reqs.length > 0) {
+                div.style.display = 'block';
+                let html = '';
+                for (let r of reqs) {
+                    html += `
+                    <div style="margin-top:5px; padding:5px; background:white; border-radius:4px; font-size:0.85rem;">
+                        <div><b>${r.name}</b> wants to connect</div>
+                        <button onclick="acceptRequest('${r.ip}', ${r.port}, '${r.name}')" 
+                                style="width:100%; margin-top:3px; background:#28a745; color:white; border:none; padding:4px; cursor:pointer;">
+                            ✅ Accept
+                        </button>
+                    </div>`;
+                }
+                list.innerHTML = html;
+            } else { div.style.display = 'none'; }
+        } catch(e) {}
+    }
+
+    async function acceptRequest(ip, port, name) {
+        try {
+            await fetch(ENGINE_API + '/api/accept', {
+                method: 'POST',
+                body: JSON.stringify({ ip: ip, port: port, name: name })
+            });
+            alert(`You accepted ${name}! You can now chat.`);
+            checkRequests(); // Refresh list immediately
+        } catch(e) { alert("Accept Error: " + e); }
+    }
+
+    function startPolling() {
+        setInterval(loadMessages, 800);
+        setInterval(checkRequests, 2000);
+    }
+
+    autoConnectEngine();
+    fetchPeers();
+    setInterval(fetchPeers, 5000);
+
+</script>
+</body>
+</html>
