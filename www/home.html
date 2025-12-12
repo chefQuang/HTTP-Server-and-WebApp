@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WeApRous P2P Chat</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; margin: 0; padding: 0; height: 100vh; 
+            display: flex; flex-direction: column; 
+        }
+        
+        .header { 
+            background: #fff; padding: 0 30px; height: 60px;
+            border-bottom: 1px solid #e0e0e0; display: flex; 
+            justify-content: space-between; align-items: center; 
+        }
+        .logout-btn { 
+            background: #dc3545; color: white; border: none; padding: 8px 15px; 
+            border-radius: 5px; cursor: pointer; 
+        }
+
+        .main-container { 
+            flex: 1; display: flex; overflow: hidden; 
+            padding: 20px; gap: 20px; max-width: 1400px; margin: 0 auto; width: 100%; 
+        }
+
+        .sidebar { 
+            width: 320px; background: #fff; border-radius: 10px; 
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .room-item { 
+            padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; 
+            background: #fff3e0; color: #e65100; font-weight: bold; 
+            display: flex; align-items: center; gap: 10px;
+        }
+        .room-item.active { background: #ff9800; color: white; }
+
+        .section-header {
+            padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee;
+            border-top: 1px solid #eee; font-weight: bold; font-size: 0.85rem; color: #555;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .btn-small {
+            font-size: 0.7rem; padding: 2px 8px; background: #28a745; 
+            color: white; border: none; border-radius: 3px; cursor: pointer;
+        }
+
+        .scroll-list { flex: 1; overflow-y: auto; }
+        
+        .list-item { 
+            padding: 10px 15px; border-bottom: 1px solid #f1f1f1; 
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+        }
+        .list-item:hover { background: #f9f9f9; }
+        .list-item.active { background: #e3f2fd; border-left: 4px solid #007bff; }
+
+        .btn-connect { background: #17a2b8; color: white; padding: 4px 8px; border:none; border-radius:3px; cursor:pointer; font-size:0.75rem; }
+        .btn-join { background: #28a745; color: white; padding: 2px 6px; border:none; border-radius:3px; cursor:pointer; font-size:0.7rem; }
+
+        .chat-area { 
+            flex: 1; background: #fff; border-radius: 10px; 
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .chat-header { 
+            padding: 0 20px; height: 60px; background: #f8f9fa; border-bottom: 1px solid #eee;
+            display: flex; flex-direction: column; justify-content: center; 
+        }
+        .messages { 
+            flex: 1; padding: 20px; overflow-y: auto; background: #fff; 
+            display: flex; flex-direction: column; gap: 10px; 
+        }
+
+        .message-row { display: flex; width: 100%; margin-bottom: 5px; }
+        .msg-content { 
+            padding: 8px 12px; border-radius: 15px; max-width: 70%; 
+            word-wrap: break-word; font-size: 0.95rem; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .sent { justify-content: flex-end; }
+        .sent .msg-content { 
+            background-color: #007bff; color: white; 
+            border-bottom-right-radius: 2px;
+        }
+        .sent .msg-sender { display: none; }
+
+        .received { justify-content: flex-start; }
+        .received .msg-content { 
+            background-color: #f1f0f0; color: #333; 
+            border-bottom-left-radius: 2px;
+        }
+        
+        .msg-sender { font-size: 0.7rem; font-weight: bold; display: block; margin-bottom: 2px; color: #555; }
+        
+        .input-area { padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; }
+        .input-area input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
+        .send-btn { background: #007bff; color: white; border: none; padding: 0 25px; border-radius: 20px; cursor: pointer; }
+        .send-btn:disabled { background: #ccc; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h2 style="display:inline; margin-right:10px;">WeApRous</h2>
+            <span>Hi, <span id="username" style="color:#007bff; font-weight:bold;">Guest</span></span>
+            <span id="engine_status" style="margin-left:15px; font-size:0.8rem; color:red;">● Offline</span>
+        </div>
+        <form action="/logout" method="POST" style="margin:0;"><button class="logout-btn">Log Out</button></form>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="sidebar">
+            <div id="btn_broadcast" class="room-item active" onclick="switchToBroadcast()">
+                <span>📢</span> GLOBAL BROADCAST
+            </div>
+
+            <div class="section-header">
+                CHANNELS
+                <button class="btn-small" onclick="createChannelPrompt()">+ New</button>
+            </div>
+            <div id="channel_list"></div>
+            
+            <div style="padding:5px 15px; background:#f1f1f1; font-size:0.75rem; font-weight:bold; color:#888;">AVAILABLE TO JOIN:</div>
+            <div id="available_channels" style="flex:1; overflow-y:auto; border-bottom:1px solid #eee;"></div>
+
+            <div class="section-header">PRIVATE PEERS</div>
+            <div id="incoming_requests" style="display:none; padding:10px; background:#ffc107; margin: 5px; border-radius: 5px;">
+                <strong>🔔 Requests:</strong> <div id="req_list"></div>
+            </div>
+            <div id="peer_ul" class="scroll-list"></div>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-header">
+                <h3 id="chat_title" style="margin:0;">📢 Global Broadcast</h3>
+                <small id="chat_subtitle" style="color:#666;">Sending to EVERYONE connected.</small>
+            </div>
+
+            <div class="messages" id="message_area">
+                <div style="text-align:center; color:#999; margin-top:20px;">Welcome! Select a room or peer to chat.</div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="chat_input" placeholder="Type a message..." disabled>
+                <button id="btn_send" class="send-btn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let ENGINE_API = "";
+    let isEngineReady = false;
+    let chatMode = 'broadcast';
+    let currentTarget = null;
+    
+    let myUsername = document.cookie.match(/auth=([^;]+)/) ? decodeURIComponent(document.cookie.match(/auth=([^;]+)/)[1]) : 'Guest';
+    document.getElementById('username').innerText = myUsername;
+
+    
+    async function createChannelPrompt() {
+        let name = prompt("Enter channel name:");
+        if(name) {
+            try {
+                let res = await fetch('/channels/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name: name})
+                });
+                
+                if(res.ok) {
+                    await joinChannel(name, true); 
+                } else {
+                    alert("Create failed. Check server.");
+                }
+            } catch(e) { console.error(e); }
+        }
+    }
+
+    async function joinChannel(name, isCreator = false) {
+        if (!isEngineReady) return alert("Engine Offline");
+        await fetch(ENGINE_API + '/api/channels/join', {
+            method: 'POST',
+            body: JSON.stringify({name: name})
+        });
+        if(!isCreator){
+            console.log(`Joined #${name}. Auto-connecting to peers...`);
+            autoConnectAllPeers();
+        }
+
+        refreshChannels();
+    }
+
+    async function autoConnectAllPeers() {
+        try {
+            let res = await fetch('/get-list');
+            let peers = await res.json();
+            
+            for (let [user, info] of Object.entries(peers)) {
+                if (user !== myUsername) {
+                    connectTo(info.ip, info.port, user, true); 
+                }
+            }
+        } catch(e) { console.error("Auto-connect failed:", e); }
+    }
+
+    async function refreshChannels() {
+        try {
+            let srvRes = await fetch('/channels/list');
+            let allChannels = await srvRes.json();
+            
+            let myChannels = [];
+            if (isEngineReady) {
+                try {
+                    let engRes = await fetch(ENGINE_API + '/api/channels/my');
+                    myChannels = await engRes.json();
+                } catch(e){}
+            }
+
+            let myHtml = '';
+            myChannels.forEach(ch => {
+                let active = (chatMode === 'channel' && currentTarget === ch) ? 'active' : '';
+                myHtml += `<div class="list-item ${active}" onclick="switchChannel('${ch}')"># ${ch}</div>`;
+            });
+            document.getElementById('channel_list').innerHTML = myHtml;
+
+            let availHtml = '';
+            allChannels.forEach(ch => {
+                if (!myChannels.includes(ch.name)) {
+                    availHtml += `<div style="padding:5px; font-size:0.9em; display:flex; justify-content:space-between;">
+                        <span># ${ch.name} <small>(${ch.creator})</small></span>
+                        <button class="btn-join" onclick="joinChannel('${ch.name}')">Join</button>
+                    </div>`;
+                }
+            });
+            document.getElementById('available_channels').innerHTML = availHtml;
+
+        } catch(e) {}
+    }
+
+    async function connectTo(ip, port, name, silent = false) {
+        if (!isEngineReady) {
+            if(!silent) alert("Engine Offline");
+            return;
+        }
+        try {
+            let res = await fetch(ENGINE_API + '/api/connect', {
+                method:'POST', 
+                body:JSON.stringify({ip:ip, port:port, my_name:myUsername})
+            });
+            let data = await res.json();
+            
+            if (res.ok) {
+                if (!silent && data.status === 'request_sent') {
+                    alert(`Request sent to ${name}`);
+                }
+            } else {
+                if(!silent && data.status !== 'already_connected') alert("Error: " + data.error);
+            }
+        } catch (e) { 
+            if(!silent) alert("Connection Error: " + e); 
+        }
+    }
+
+    function switchToBroadcast() {
+        chatMode = 'broadcast';
+        updateHeader("📢 Global Broadcast", "Sending to EVERYONE connected.", "#ff9800", "Broadcast");
+        highlightItem('btn_broadcast');
+        loadMessages();
+    }
+
+    function switchChannel(name) {
+        chatMode = 'channel';
+        currentTarget = name;
+        updateHeader(`# ${name}`, "Channel Room", "#28a745", "Send");
+        highlightItem(null); 
+        refreshChannels(); 
+        loadMessages();
+    }
+
+    function switchToPrivate(ip, port, name) {
+        chatMode = 'private';
+        currentTarget = {ip, port, name};
+        updateHeader(`👤 ${name}`, `Direct P2P: ${ip}:${port}`, "#007bff", "Send Private");
+        highlightItem(`peer-${name}`);
+        loadMessages();
+    }
+
+    function updateHeader(title, sub, color, btnText) {
+        document.getElementById('chat_title').innerText = title;
+        document.getElementById('chat_subtitle').innerText = sub;
+        let btn = document.getElementById('btn_send');
+        btn.style.background = color;
+        btn.innerText = btnText;
+    }
+
+    function highlightItem(id) {
+        document.querySelectorAll('.room-item, .list-item').forEach(el => el.classList.remove('active'));
+        if(id) {
+            let el = document.getElementById(id);
+            if(el) el.classList.add('active');
+        }
+    }
+
+    async function sendMessage() {
+        let txt = document.getElementById('chat_input').value;
+        if (!txt || !isEngineReady) return;
+
+        try {
+            if (chatMode === 'broadcast') {
+                await fetch(ENGINE_API + '/broadcast-peer', {method: 'POST', body: JSON.stringify({msg: txt})});
+            } else if (chatMode === 'channel') {
+                await fetch(ENGINE_API + '/api/send_channel', {method: 'POST', body: JSON.stringify({channel: currentTarget, msg: txt})});
+            } else {
+                await fetch(ENGINE_API + '/api/send_peer', {method: 'POST', body: JSON.stringify({ip: currentTarget.ip, port: currentTarget.port, msg: txt})});
+            }
+            document.getElementById('chat_input').value = '';
+            loadMessages();
+        } catch (e) { alert("Send failed: " + e); }
+    }
+
+    
+    async function autoConnect() {
+        try {
+            let res = await fetch('/get-my-info');
+            if(res.ok) {
+                let data = await res.json();
+                ENGINE_API = data.engine_url;
+                let ping = await fetch(ENGINE_API + '/api/messages');
+                if(ping.ok) {
+                    isEngineReady = true;
+                    document.getElementById('engine_status').innerText = "● Online";
+                    document.getElementById('engine_status').style.color = "green";
+                    document.getElementById('chat_input').disabled = false;
+                    document.getElementById('btn_send').disabled = false;
+                    startLoops();
+                }
+            }
+        } catch(e) { setTimeout(autoConnect, 3000); }
+    }
+
+    async function fetchPeers() {
+        try {
+            let res = await fetch('/get-list');
+            let peers = await res.json();
+            let html = '';
+            for(let [u, i] of Object.entries(peers)) {
+                if(u !== myUsername) {
+                    html += `<div class="list-item" id="peer-${u}" onclick="switchToPrivate('${i.ip}', ${i.port}, '${u}')">
+                        ${u} <button class="btn-connect" onclick="connectTo('${i.ip}', ${i.port}, '${u}', false); event.stopPropagation();">Connect</button>
+                    </div>`;
+                }
+            }
+            document.getElementById('peer_ul').innerHTML = html;
+        } catch(e){}
+    }
+
+    async function loadMessages() {
+        if(!isEngineReady) return;
+        try {
+            let res = await fetch(ENGINE_API + '/api/messages');
+            let msgs = await res.json();
+            let html = '';
+            
+            msgs.forEach(m => {
+                let show = false;
+                if(chatMode === 'broadcast' && m.channel === 'broadcast') show = true;
+                else if(chatMode === 'channel' && m.channel === currentTarget) show = true;
+                else if(chatMode === 'private' && m.channel === 'private') show = true;
+                
+                if(show) {
+                    let isMe = (m.type === 'sent' || m.sender === 'Me');
+                    let cls = isMe ? 'sent' : 'received';
+                    
+                    html += `
+                    <div class="message-row ${cls}">
+                        <div class="msg-content">
+                            <span class="msg-sender">${m.sender}</span> 
+                            ${m.msg}
+                        </div>
+                    </div>`;
+                }
+            });
+            
+            let area = document.getElementById('message_area');
+            let shouldScroll = area.scrollTop + area.clientHeight >= area.scrollHeight - 50;
+            area.innerHTML = html;
+            if(shouldScroll) area.scrollTop = area.scrollHeight;
+            
+        } catch (e) {}
+    }
+
+    async function checkRequests() {
+        try {
+            let res = await fetch(ENGINE_API + '/api/pending');
+            let reqs = await res.json();
+            if (reqs.length > 0) {
+                document.getElementById('incoming_requests').style.display = 'block';
+                document.getElementById('incoming_requests').innerHTML = 
+                    reqs.map(r => `<div><b>${r.name}</b> wants connect <button class="btn-join" onclick="acceptReq('${r.ip}', ${r.port}, '${r.name}')">Accept</button></div>`).join('');
+            } else {
+                document.getElementById('incoming_requests').style.display = 'none';
+            }
+        } catch(e){}
+    }
+
+    async function acceptReq(ip, port, name) {
+        await fetch(ENGINE_API + '/api/accept', {method:'POST', body:JSON.stringify({ip:ip, port:port, name:name})});
+        checkRequests();
+    }
+
+    function startLoops() {
+        setInterval(loadMessages, 800);
+        setInterval(refreshChannels, 3000);
+        setInterval(fetchPeers, 5000);
+        setInterval(checkRequests, 2000);
+    }
+
+    autoConnect();
+    fetchPeers();
+    refreshChannels(); 
+</script>
+</body>
+</html>
