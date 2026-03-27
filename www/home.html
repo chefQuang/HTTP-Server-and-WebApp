@@ -86,7 +86,7 @@
             background-color: #fff; display: flex; flex-direction: column; gap: 10px; 
         }
         
-        /* BONG BÓNG CHAT */
+        
         .message-row { display: flex; width: 100%; }
         .msg-content { 
             padding: 10px 15px; border-radius: 15px; 
@@ -126,7 +126,7 @@
         
         <div class="sidebar">
             <div id="btn_global" class="room-item active" onclick="switchToGlobal()">
-                <span>📢</span> Global Broadcast
+                <span></span> Global Broadcast
             </div>
 
             <div class="peer-list">
@@ -135,14 +135,14 @@
             </div>
 
             <div id="incoming_requests" class="request-box" style="display:none;">
-                <strong style="color:#d9534f;">🔔 New Requests:</strong>
+                <strong style="color:#d9534f;">New Requests:</strong>
                 <div id="req_list"></div>
             </div>
         </div>
 
         <div class="chat-area">
             <div class="chat-header">
-                <h3 id="chat_title" style="margin:0;">📢 Global Broadcast</h3>
+                <h3 id="chat_title" style="margin:0;">Global Broadcast</h3>
                 <small id="chat_subtitle">Messages here are sent to EVERYONE connected.</small>
             </div>
 
@@ -178,7 +178,7 @@
         currentPeer = null;
         
         // Update UI
-        document.getElementById('chat_title').innerText = "📢 Global Broadcast";
+        document.getElementById('chat_title').innerText = "Global Broadcast";
         document.getElementById('chat_subtitle').innerText = "Sending to ALL connected peers.";
         document.getElementById('btn_send').style.background = "#28a745"; 
         document.getElementById('btn_send').innerText = "Broadcast";
@@ -191,7 +191,7 @@
         chatMode = 'private';
         currentPeer = {ip: ip, port: port, name: name};
 
-        document.getElementById('chat_title').innerText = `💬 Chat with ${name}`;
+        document.getElementById('chat_title').innerText = `Chat with ${name}`;
         document.getElementById('chat_subtitle').innerText = `Direct P2P connection to ${ip}:${port}`;
         document.getElementById('btn_send').style.background = "#007bff";
         document.getElementById('btn_send').innerText = "Send";
@@ -237,7 +237,6 @@
 
             for (let [user, info] of Object.entries(peers)) {
                 if (user !== myUsername) {
-                    // Check logic nút bấm: Nếu đã connect thì hiện nút Chat, chưa thì hiện Connect
                     html += `
                     <div class="peer-item" id="peer-${user}">
                         <div>
@@ -297,12 +296,6 @@
             let html = '';
             
             for (let m of msgs) {
-                // Filter logic: 
-                // Nếu ở chế độ broadcast -> Hiện tin của mọi người (hoặc lọc logic tùy ý)
-                // Nếu ở chế độ private -> Chỉ hiện tin của người đó
-                
-                // Ở bài tập này ta hiển thị hết (đơn giản hóa)
-                // Nhưng đánh dấu người gửi
                 
                 let cls = (m.type === 'sent') ? 'sent' : 'received';
                 html += `
@@ -338,7 +331,7 @@
                         <div><b>${r.name}</b> wants to connect</div>
                         <button onclick="acceptRequest('${r.ip}', ${r.port}, '${r.name}')" 
                                 style="width:100%; margin-top:3px; background:#28a745; color:white; border:none; padding:4px; cursor:pointer;">
-                            ✅ Accept
+                             Accept
                         </button>
                     </div>`;
                 }
